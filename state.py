@@ -15,11 +15,20 @@ class SupportState(TypedDict, total=False):
     order_details: Dict[str, Any]
     policy_result: str
 
-    # Resolution
+    #refund information
+    refund_required: bool
+    refund_eligible: bool
+    requires_human_approval: bool
     refund_amount: float
+    refund_reason: str
     refund_approved: bool
-    resolution: str
 
+    
     # Conversation / workflow control
     messages: List[Dict[str, str]]
     error: Optional[str]
+
+    resolution: str
+    messages: list
+
+   

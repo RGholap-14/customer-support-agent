@@ -24,6 +24,16 @@ def get_order_details(order_id: str) -> dict:
             "delivered_date": "2026-08-05",
             "condition": "good",
         },
+        "ORD-1003": {
+            "order_id": "ORD-1003",
+            "customer_id": "CUST-003",
+            "status": "delivered",
+            "item": "Laptop",
+            "amount": 75000.0,
+            "delivered_date": "2026-08-08",
+            "condition": "damaged",
+        }
+
     }
 
     order = orders.get(order_id)

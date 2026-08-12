@@ -1,17 +1,31 @@
 from dotenv import load_dotenv
 
-from graph import app_graph
+from graph import graph
 
 load_dotenv()
 
 
-def run_support_agent(user_input: str) -> dict:
-    """Run the customer support workflow for a single user message."""
-    return app_graph.invoke({"messages": [("user", user_input)]})
-
-
 if __name__ == "__main__":
-    user_input = input("Customer message: ").strip()
-    if user_input:
-        result = run_support_agent(user_input)
-        print(result["messages"][-1].content)
+
+    initial_state = {
+        "user_query": (
+            "My order ORD-1003 arrived damaged. "
+            "I want a refund."
+        ),
+        "customer_id": "CUST-003",
+        "order_id": "ORD-1003",
+        "messages": [],
+    }
+
+    config = {
+        "configurable": {
+            "thread_id": "test-customer-001"
+        }
+    }
+
+    result = graph.invoke(
+        initial_state,
+        config=config,
+    )
+
+    print(result)
