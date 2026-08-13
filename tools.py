@@ -1,73 +1,116 @@
 from langchain_core.tools import tool
+from database import get_connection
 
 
 @tool
-def get_order_details(order_id: str) -> dict:
-    """Retrieve order details using an order ID."""
+def get_order(order_id: str):
+    """Fetch an order from PostgreSQL using the order ID."""
 
-    orders = {
-        "ORD-1001": {
-            "order_id": "ORD-1001",
-            "customer_id": "CUST-001",
-            "status": "delivered",
-            "item": "Wireless Headphones",
-            "amount": 4999.0,
-            "delivered_date": "2026-08-08",
-            "condition": "damaged",
-        },
-        "ORD-1002": {
-            "order_id": "ORD-1002",
-            "customer_id": "CUST-002",
-            "status": "delivered",
-            "item": "Mechanical Keyboard",
-            "amount": 7999.0,
-            "delivered_date": "2026-08-05",
-            "condition": "good",
-        },
-        "ORD-1003": {
-            "order_id": "ORD-1003",
-            "customer_id": "CUST-003",
-            "status": "delivered",
-            "item": "Laptop",
-            "amount": 75000.0,
-            "delivered_date": "2026-08-08",
-            "condition": "damaged",
-        }
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    order_id,
+                    customer_id,
+                    item,
+                    amount,
+                    status,
+                    delivered_date,
+                    condition
+                FROM orders
+                WHERE order_id = %s
+                """,
+                (order_id,),
+            )
 
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "order_id": row[0],
+        "customer_id": row[1],
+        "item": row[2],
+        "amount": float(row[3]),
+        "status": row[4],
+        "delivered_date": str(row[5]),
+        "condition": row[6],
     }
 
-    order = orders.get(order_id)
-
-    if not order:
-        return {
-            "error": f"Order {order_id} not found."
-        }
-
-    return order
 
 
 @tool
-def search_policy(query: str) -> str:
-    """Search the customer support policy knowledge base."""
+def search_policy() -> str:
+    """Fetch the refund policy from PostgreSQL."""
 
-    policies = """
-    Refund Policy:
-    - Damaged products are eligible for a full refund.
-    - Customers must report damage within 7 days of delivery.
-    - Refunds below ₹5,000 can be automatically approved.
-    - Refunds of ₹5,000 or more require human approval.
-    - Products that are delivered in good condition are not eligible
-      for damage-based refunds.
-    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT policy_text
+                FROM policies
+                WHERE policy_name = %s
+                LIMIT 1
+                """,
+                ("Refund Policy",),
+            )
 
-    return policies
+            row = cur.fetchone()
 
+    if not row:
+        return "Refund policy not found."
+
+    return row[0]
 
 @tool
 def process_refund(order_id: str, amount: float) -> str:
-    """Process a refund for an eligible order."""
+    """Process and record a refund in PostgreSQL."""
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            # Check that the order exists
+            cur.execute(
+                """
+                SELECT order_id
+                FROM orders
+                WHERE order_id = %s
+                """,
+                (order_id,),
+            )
+
+            order = cur.fetchone()
+
+            if not order:
+                return f"Order {order_id} was not found."
+
+            # Record the refund
+            cur.execute(
+                """
+                INSERT INTO refunds (
+                    order_id,
+                    amount,
+                    status,
+                    approved_by
+                )
+                VALUES (%s, %s, %s, %s)
+                RETURNING refund_id
+                """,
+                (order_id, amount, "processed", "customer_support_agent"),
+            )
+
+            refund_id = cur.fetchone()[0]
+
+        conn.commit()
 
     return (
         f"Refund of ₹{amount:.2f} successfully processed "
-        f"for order {order_id}."
+        f"for order {order_id}. Refund ID: {refund_id}"
     )
+
+
+
+if __name__ == "__main__":
+    refund = process_refund.invoke({"order_id": "ORD-1003", "amount": 75000.0})
+    print(refund)

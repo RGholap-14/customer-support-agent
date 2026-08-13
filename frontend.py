@@ -40,17 +40,17 @@ if "result" not in st.session_state:
 
 customer_id = st.text_input(
     "Customer ID",
-    value="CUST-003",
+    placeholder="Example: CUST-003",
 )
 
 order_id = st.text_input(
     "Order ID",
-    value="ORD-1003",
+    placeholder="Example: ORD-1003",
 )
 
 user_query = st.text_area(
     "How can we help?",
-    value="My order ORD-1003 arrived damaged. I want a refund.",
+    placeholder="Example: My order ORD-1003 arrived damaged. I want a refund.",
 )
 
 
@@ -172,13 +172,20 @@ if st.session_state.result:
     result = st.session_state.result
 
     st.divider()
-
     st.subheader("Result")
 
-    if result.get("refund_approved"):
+    if result.get("refund_approved") is True:
 
         st.success(
             result.get("resolution")
+            or "Refund approved and processed successfully."
+        )
+
+    elif result.get("refund_approved") is False:
+
+        st.error(
+            result.get("resolution")
+            or "Refund request was rejected."
         )
 
     else:
@@ -188,3 +195,119 @@ if st.session_state.result:
             or result.get("refund_reason")
             or "Request completed."
         )
+
+
+st.sidebar.header("Admin")
+
+admin_action = st.sidebar.selectbox(
+    "Choose action",
+    ["None", "Add Customer", "Add Order"],
+)
+
+if admin_action == "Add Customer":
+
+    st.sidebar.subheader("Add Customer")
+
+    new_customer_id = st.sidebar.text_input(
+        "Customer ID",
+        placeholder="Example: CUST-004",
+    )
+
+    new_customer_name = st.sidebar.text_input(
+        "Name",
+        placeholder="Example: Rutuja",
+    )
+
+    new_customer_email = st.sidebar.text_input(
+        "Email",
+        placeholder="Example: user@example.com",
+    )
+
+    if st.sidebar.button("Add Customer"):
+
+        if not new_customer_id.strip():
+            st.sidebar.error("Customer ID is required.")
+
+        elif not new_customer_name.strip():
+            st.sidebar.error("Customer name is required.")
+
+        else:
+            from database import add_customer
+
+            success = add_customer(
+                new_customer_id.strip(),
+                new_customer_name.strip(),
+                new_customer_email.strip(),
+            )
+
+            if success:
+                st.sidebar.success("Customer added successfully.")
+            else:
+                st.sidebar.warning(
+                    f"Customer {new_customer_id} already exists."
+                )
+
+if admin_action == "Add Order":
+
+    st.sidebar.subheader("Add Order")
+
+    new_order_id = st.sidebar.text_input(
+        "Order ID",
+        placeholder="Example: ORD-1004",
+    )
+
+    new_order_customer_id = st.sidebar.text_input(
+        "Customer ID",
+        placeholder="Example: CUST-004",
+    )
+
+    new_item = st.sidebar.text_input(
+        "Item",
+        placeholder="Example: Smartphone",
+    )
+
+    new_amount = st.sidebar.number_input(
+        "Amount (₹)",
+        min_value=0.0,
+        step=100.0,
+    )
+
+    new_status = st.sidebar.selectbox(
+        "Status",
+        ["delivered", "shipped", "processing"],
+    )
+
+    new_delivery_date = st.sidebar.date_input(
+        "Delivery Date",
+    )
+
+    new_condition = st.sidebar.selectbox(
+        "Condition",
+        ["good", "damaged"],
+    )
+
+    if st.sidebar.button("Add Order"):
+
+        if not new_order_id.strip():
+            st.sidebar.error("Order ID is required.")
+
+        elif not new_order_customer_id.strip():
+            st.sidebar.error("Customer ID is required.")
+
+        elif not new_item.strip():
+            st.sidebar.error("Item is required.")
+
+        else:
+            from database import add_order
+
+            add_order(
+                new_order_id.strip(),
+                new_order_customer_id.strip(),
+                new_item.strip(),
+                new_amount,
+                new_status,
+                new_delivery_date,
+                new_condition,
+            )
+
+            st.sidebar.success("Order added successfully.")

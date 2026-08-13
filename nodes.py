@@ -7,7 +7,7 @@ from langgraph.types import interrupt
 
 from state import SupportState
 from tools import (
-    get_order_details,
+    get_order,
     search_policy,
     process_refund,
 )
@@ -87,7 +87,7 @@ def get_order_node(state: SupportState) -> dict[str, Any]:
             "error": "No order ID was provided."
         }
 
-    result = get_order_details.invoke({
+    result = get_order.invoke({
         "order_id": order_id
     })
 
@@ -264,15 +264,19 @@ def human_approval(state: SupportState) -> dict[str, Any]:
 
 
 def route_refund(state: SupportState) -> str:
-    """Route the refund workflow based on eligibility."""
+    """Route refund requests based on eligibility and approval requirement."""
 
-    if not state.get("refund_eligible", False):
+    if not state.get("refund_required"):
         return "resolve"
 
-    if state.get("requires_human_approval", False):
+    if not state.get("refund_eligible"):
+        return "resolve"
+
+    if state.get("requires_human_approval"):
         return "human_approval"
 
     return "process_refund"
+
 
 def route_after_approval(state: SupportState) -> str:
     """Route based on human approval decision."""
